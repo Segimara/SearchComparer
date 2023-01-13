@@ -1,0 +1,212 @@
+﻿@page "/"
+
+@using SearchComparer.Shared.Extentions
+@using SearchComparer.Shared.Models
+@using SearchComparer.Shared
+@*
+todo Прерывать тесты при нажании кнопки очистки, запретить запускать тесты ещё пока выполняються какой-то другой тест*@
+
+<div class="row">
+	<div class="col-2">
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => Generate(true)">Випадково</a>
+		</div>
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => Generate(false)">Послідовно</a>
+		</div>
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => GenerateIndex(list.Count)">Згенерувати  елемент</a>
+		</div>
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => Generate(false, true)">Випадково з унікальними елементами</a>
+		</div>
+	</div>
+	<div class="col-8">
+		<p>Array size varieble: @(ArrSize)</p>
+		<p>Index of searchedElem: @(searchedIndex)</p>
+		<p class="">
+			[<span>
+				@for (var i = 0; i < list.Count; i++)
+				{
+					@if (list[i] == list[searchedIndex])
+					{
+						<mark class="" style="background-color: #7eb2ff78; border-radius: 5px;"><strong>@list[i].ToString()</strong></mark>
+					}
+					else
+					{
+						int buf = i;
+								<span class="" @onclick="(e) => SetSearchedIndex(buf)">@list[i]</span>
+					}
+					@if (i != list.Count - 1)
+					{
+								<span class="">, </span>
+					}
+				}
+			</span>	
+			]
+		</p>
+		<div row>
+			<table class = "table table-bordered">
+				<thead>
+					<tr>
+						<th>Назва алгоритму</th>
+						<th>Середній час за усі @(results.First().Value.Time.Count) тестів</th>
+					</tr>
+				</thead>
+    			<tbody class="table-group-divider">
+					@for (var i = 0; i < namesOfAlgorithms.Count; i++)
+				   {
+					   <tr>
+						   <td>@namesOfAlgorithms[i]</td>
+						   <td class="text-start">@results[namesOfAlgorithms[i]].AvarageTime.ToString("c")</td>
+					   </tr>
+				   }
+				</tbody>
+			</table>
+		</div>
+		<div style = "positio: reletive">
+
+		</div>
+	</div>
+	<div class = "col-2">
+		<div class = "p-1 row">
+			<strong>Кількість елементів масив</strong>
+			<input class="col" @bind = "ArrSize" @bind:event="oninput"/>
+		</div>
+		<div class = "p-1 row">
+			<strong>Кількість тестів</strong>
+			<input class="col" @bind = "testCount" />
+		</div>
+		<div class = "p-1 row">	
+			<strong>Затримка між випадкоовими тестами</strong>
+			<input class="col" @bind = "delay" />
+		</div>
+		<div class="p-1 row">
+			<a class="btn " @onclick="(e) => ClearTests()">Очистити тести</a>
+		</div>
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => AddTestOfSearchedElement(list[searchedIndex])">Виконати тест для поточного обраного елементу</a>
+		</div>
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => AddTests(false)">Виконати тест для поточного обраного елементу введену кількість разів</a>
+		</div>
+		<div class="p-1 row">
+			<a class="btn btn-primary" @onclick="(e) => AddTests(true)">Виконати тест з випадковими шуканими елементами</a>
+		</div>
+	</div>
+
+</div>
+
+@code {
+	int testCount = 10;
+	int arrSize = 32;
+	int ArrSize
+	{
+		get 
+		{
+			return arrSize;
+		}
+		set
+		{
+			if (searchedIndex >=arrSize)
+			{
+				searchedIndex = 0;
+			}
+			arrSize = value;
+		}
+	}
+	int delay = 100;
+	Random random = new Random();
+	List<int> list = new List<int>();
+	List<string> namesOfAlgorithms = new List<string>
+	{
+		"Лінійний пошук",
+		"Бінарний пошук",
+		"Рекурсивний бінарний пошук",
+		"Пошук Стрибками",
+		"Інтерполяційний пошук",
+		"Експотенціальний пошук"
+	};
+	Dictionary<string, CompareModel> results = new Dictionary<string, CompareModel>();
+	bool isRandomOrder = false;
+	int searchedIndex = 0;
+	protected override async Task OnInitializedAsync()
+	{
+		Generate(false);
+		for (var i = 0; i < namesOfAlgorithms.Count; i++)
+		{
+			results[namesOfAlgorithms[i]] = new CompareModel();
+		}
+	}
+	private void SetSearchedIndex(int i)
+	{
+		searchedIndex = i;
+		StateHasChanged();
+	}
+	private void GenerateIndex(int max)
+	{
+		searchedIndex = random.Next(max);
+		StateHasChanged();
+	}
+	private void Generate(bool isRandom, bool isUnique = false)
+	{
+		list = new List<int>(arrSize);
+		isRandomOrder = isRandom;
+		if (!isRandom)
+		{
+			for (var i = 0; i < list.Capacity; i++)
+			{
+				list.Add(i + 1);
+			}
+			if (isUnique)
+			{
+				list.Shuffle();
+			}
+		}
+		else
+		{
+			for (var i = 0; i < list.Capacity; i++)
+			{
+				list.Add(random.Next(list.Capacity) + 1);
+			}
+		}
+	}
+	private void ClearTests()
+	{
+		foreach (var item in results)
+		{
+			item.Value.Time = new List<TimeSpan>();
+		}
+	}
+	private void AddTestOfSearchedElement(int searchedElem)
+	{
+		List<TimeSpan> tmp = new List<TimeSpan>();
+		tmp.Add(FunctionTestService.Test(SearchExtention.LinearSearch, list.ToList(), searchedElem, isRandomOrder));
+		tmp.Add(FunctionTestService.Test(SearchExtention.BinarySearch, list.ToList(), searchedElem, isRandomOrder));
+		tmp.Add(FunctionTestService.Test(SearchExtention.recursiveBinarySearch, list.ToList(), searchedElem, isRandomOrder));
+		tmp.Add(FunctionTestService.Test(SearchExtention.jumpSearch, list.ToList(), searchedElem, isRandomOrder));
+		tmp.Add(FunctionTestService.Test(SearchExtention.interpolationSearch, list.ToList(), searchedElem, isRandomOrder));
+		tmp.Add(FunctionTestService.Test(SearchExtention.exponentialSearch, list.ToList(), searchedElem, isRandomOrder));
+		for (var i = 0; i < tmp.Count; i++)
+		{
+			results[namesOfAlgorithms[i]].Time.Add(tmp[i]);
+		}
+	}
+	private async void AddTests(bool isRandom)
+	{
+		for (int i = 0; i < testCount; i++)
+		{
+			if (isRandom)
+			{
+				GenerateIndex(list.Count);
+			}
+			AddTestOfSearchedElement(list[searchedIndex]);
+			StateHasChanged();
+			if (isRandom)
+			{
+				await Task.Delay(delay);
+			 }
+		}
+	}
+
+}
